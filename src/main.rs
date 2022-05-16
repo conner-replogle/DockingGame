@@ -176,9 +176,8 @@ fn move_player(
         acceleration -= SPEED; 
         spaceship_anim.mode = SpaceShipMode::ThrustingForward;
     }
-    if keyboard_input.pressed(KeyCode::W){
+    if keyboard_input.pressed(KeyCode::S){
         acceleration += BRAKE_INTESITY; 
-        spaceship_anim.mode = SpaceShipMode::ThrustingForward;
     }
     
     if keyboard_input.pressed(KeyCode::D){
