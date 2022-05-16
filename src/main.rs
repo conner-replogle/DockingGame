@@ -24,8 +24,9 @@ fn main() {
         .add_system_set(
             SystemSet::on_update(GameState::Playing)
                 .with_system(move_player)
+                .with_system(follow_player)
                 .with_system(spaceship_animation)
-                .with_system(scoreboard_system),
+                .with_system(debug_ui),
         )
         .add_system_set(SystemSet::on_exit(GameState::Playing).with_system(teardown))
         .add_system_set(SystemSet::on_update(GameState::GameOver).with_system(gameover_keyboard))
@@ -88,6 +89,19 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut game: ResMu
     let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(128.0, 120.0), 8, 1);
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
     commands
+        .spawn_bundle(SpriteBundle {
+            sprite: Sprite {
+                color: Color::CRIMSON,
+                ..default()
+            },
+            transform: Transform {
+                translation: Vec3::new(200.0,200.0,0.0),
+                scale: Vec3::new(100.0, 100.0, 10.0),
+                ..default()
+            },
+            ..default()
+        });
+    commands
         .spawn()
         .insert(GravityScale(0.0))
         .insert(RigidBody::Dynamic)
@@ -132,7 +146,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut game: ResMu
             "ALPHA",
             TextStyle {
                 font: asset_server.load("fonts/retro_gaming_font.ttf"),
-                font_size: 40.0,
+                font_size: 20.0,
                 color: Color::rgb(1., 1., 1.),
             },
             Default::default(),
@@ -155,6 +169,32 @@ fn teardown(mut commands: Commands, entities: Query<Entity, Without<Camera>>) {
     for entity in entities.iter() {
         commands.entity(entity).despawn_recursive();
     }
+}
+
+fn follow_player(time: Res<Time>,player_query: Query<& Transform,With<PlayerMoveable>>,mut camera: Query<&mut Transform,(With<Camera2d>,Without<PlayerMoveable>)>){
+    let player = player_query.get_single().unwrap();
+    let mut camera = camera.get_single_mut().unwrap();
+    let cam_x = camera.translation.x;
+    let cam_y = camera.translation.y;
+
+    let mut x = player.translation.x;
+    let mut y = player.translation.y;
+
+    let del_x = x - cam_x;
+    let del_y = y - cam_y;
+    let distance = f32::sqrt((del_x * del_x) + (del_y * del_y));
+    let new_x:f32 ;
+    let new_y: f32;
+    //println!("distance {}",distance);
+    if distance > 50.{
+        new_x = del_x *((distance-50.) / 100.) *time.delta_seconds();
+        new_y = del_y *((distance-50.) / 100.) *time.delta_seconds();
+        camera.translation = Vec3::new(cam_x + new_x,cam_y + new_y,camera.translation.z);
+    
+
+    }
+
+    
 }
 
 // control the game character
@@ -233,9 +273,10 @@ fn spaceship_animation(
 
 
 // update the score displayed during the game
-fn scoreboard_system(game: Res<Game>, mut query: Query<&mut Text>) {
-    //let mut text = query.single_mut();
-    //text.sections[0].value = format!("Sugar Rush: {}", game.score);
+fn debug_ui( mut query: Query<&mut Text>, player_q: Query<(&Transform,&Velocity,&ExternalForce),With<PlayerMoveable>>) {
+    let mut text = query.single_mut();
+    let (transform,velocity,ext_force) = player_q.single();
+    text.sections[0].value = format!("Position: {} \n Velocity: (LV:{},AV:{}) \n ExternalForce: (F:{},T:{})", transform.translation.round(),velocity.linvel.round(),velocity.angvel.round(),ext_force.force.round(),ext_force.torque.round());
 }
 
 // restart the game when pressing spacebar
