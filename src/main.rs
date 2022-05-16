@@ -57,14 +57,11 @@ enum SpaceShipMode{
 }
 #[derive(Component)]
 struct SpaceShipAnimation{
-    index: u32,
     mode: SpaceShipMode
 }
 #[derive(Default)]
 struct Game {
-    score: i32,
-    camera_should_focus: Vec3,
-    camera_is_focus: Vec3,
+    score: i32
 }
 
 
@@ -100,7 +97,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut game: ResMu
         })
         .insert(Collider::ball(50.0))
         .insert(SpaceShipAnimation{
-            index: 0,
             mode: SpaceShipMode::Standby,
         })
         .insert(ExternalForce{
@@ -171,9 +167,8 @@ fn move_player(
 ) {
     const SPEED:f32 = 50.0;
     const TURNING_SPEED:f32 = 0.075;
-    const BRAKE_INTESITY:f32 = 0.6;
+    const BRAKE_INTESITY:f32 = 25.;
     let mut acceleration = 0.0;
-    let mut brake = false;
     let mut angle = 0.0;
     let mut spaceship_anim = spaceship_animation.get_single_mut().unwrap();
     spaceship_anim.mode = SpaceShipMode::Standby;
@@ -181,9 +176,11 @@ fn move_player(
         acceleration -= SPEED; 
         spaceship_anim.mode = SpaceShipMode::ThrustingForward;
     }
-    if keyboard_input.pressed(KeyCode::S){
-        brake = true;
+    if keyboard_input.pressed(KeyCode::W){
+        acceleration += BRAKE_INTESITY; 
+        spaceship_anim.mode = SpaceShipMode::ThrustingForward;
     }
+    
     if keyboard_input.pressed(KeyCode::D){
         angle -= TURNING_SPEED;
     }
@@ -191,13 +188,11 @@ fn move_player(
         angle += TURNING_SPEED;
     }
     ext_force.for_each_mut(|(mut force,mut damping,tra)| {
-        if brake{
-            damping.linear_damping = BRAKE_INTESITY;
-        }
+
         force.torque = angle;
         let norm = tra.rotation.normalize();
         let euler = norm.to_euler(EulerRot::XYZ);
-        let mut z_deg = (euler.2 * 180.0 / std::f64::consts::PI as f32);
+        let mut z_deg = euler.2 * 180.0 / std::f64::consts::PI as f32;
         if z_deg < 0.0{
             z_deg+= 360.0;
 
